@@ -1,17 +1,49 @@
-from fastapi import FastAPI,Request
+from fastapi import FastAPI, File, UploadFile,Request,Response
+import subprocess
+from PIL import Image
+import io
+import os
 from fastapi.templating import Jinja2Templates
+from azure.storage.blob import BlobServiceClient
+
+
+
 
 app = FastAPI()
-
-#domain where this api is hosted for example : localhost:5000/docs to see swagger documentation automagically generated.
 templates=Jinja2Templates(directory="templates")
+origins = ["*","redactapp.azurewebsites.net"] # Replace * with the allowed origins
 
-@app.get("/abc")
-def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+my_connection_string='DefaultEndpointsProtocol=https;AccountName=aiworkspace4684782811;AccountKey=+IRiIf1QCRTNc9qDhJRQdoqmTH43tdMOXwSQxFXGKrzspKIa65JJwSo63wHa/mbfxF6t5+vbdZno+AStN6rTfw==;EndpointSuffix=core.windows.net'
+
+
+def get_image_data_from_blob():
+    # Create a BlobServiceClient object
+    blob_service_client = BlobServiceClient.from_connection_string(my_connection_string)
+
+    # Get a reference to the blob container
+    container_client = blob_service_client.get_container_client("azureml")
+
+    # Get a reference to the blob
+    blob_client = container_client.get_blob_client("myimage.jpg")
+
+    # Download the blob data
+    blob_data = blob_client.download_blob().readall()
+
+    # Return the blob data as a bytes object
+    return blob_data
+
 @app.get("/")
-def home():
-    return "Hello"
+def home(request: Request):
+    return templates.TemplateResponse("upload.html", {"request": request})
+
+
 @app.post("/uploads/")
 async def upload_image(file: UploadFile = File(...)):
     image_data = await file.read()
@@ -32,7 +64,12 @@ async def upload_image(file: UploadFile = File(...)):
    # file_path = "runs/detect/train/temp_img.jpg"  # replace with your actual file path
     # Return the output
     return Response(content=i, media_type='image/jpeg')
-    
-    
-   
-    
+
+def run():
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+if __name__ == "__main__":
+    run()
+
+ 
