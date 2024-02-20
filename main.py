@@ -6,5 +6,5 @@ app = FastAPI()
 
 
 @app.get("/")
-def home():
-    return {"message":"Hello TutLinks.com"}
+def home(request: Request):
+    return templates.TemplateResponse("upload.html", {"request": request})
